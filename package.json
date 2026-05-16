@@ -1,0 +1,7 @@
+{
+  "name": "neoteric-legal",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start"
+  }
+}
