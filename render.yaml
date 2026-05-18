@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: legalcase-system-2
+    env: static
+    rootDir: frontend
+    buildCommand: npm install --include=dev && ./node_modules/.bin/vite build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
