@@ -91,3 +91,10 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on PORT ${PORT}`);
 });
+
+// Self ping - every 14 minutes
+setInterval(() => {
+  fetch('https://legalcase-system-1.onrender.com/api/health')
+    .then(() => console.log('Self ping - staying awake'))
+    .catch(() => {});
+}, 14 * 60 * 1000);
