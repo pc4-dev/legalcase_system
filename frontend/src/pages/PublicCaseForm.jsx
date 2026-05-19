@@ -1,35 +1,40 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import SelectOrOther from '../components/Common/SelectOrOther';
 
 const API = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : 'http://localhost:5000/api';
 
-const STAGES   = ['filing','hearing','arguments','decree','appeal','settled'];
-const STATUSES = ['active','urgent','pending'];
+const STAGES   = ['Filing','Hearing','Arguments','Decree','Appeal','Settled'];
+const STATUSES = ['Active','Urgent','Pending'];
 
 const S = {
   page:     { minHeight:'100vh', background:'#F4F4F6', fontFamily:"'DM Sans',system-ui,sans-serif" },
   header:   { background:'linear-gradient(145deg,#E8581A 0%,#C94B10 60%,#A83C0C 100%)', padding:'36px 24px 44px', position:'relative', overflow:'hidden' },
   card:     { background:'#fff', borderRadius:16, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'28px', maxWidth:680, margin:'-22px auto 0', position:'relative' },
-  secTitle: { fontSize:12, fontWeight:700, color:'#F07B2B', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16, display:'flex', alignItems:'center', paddingBottom:8, borderBottom:'1.5px solid #FFF0E5' },
+  secTitle: { fontSize:12, fontWeight:700, color:'#F07B2B', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16, marginTop:20, display:'flex', alignItems:'center', gap:6, paddingBottom:8, borderBottom:'1.5px solid #FFF0E5' },
   field:    { marginBottom:14 },
   label:    { display:'block', fontSize:12, fontWeight:600, color:'#4A4540', marginBottom:6 },
   hint:     { fontSize:11, color:'#C4BDB6', marginTop:4 },
   input:    { width:'100%', padding:'10px 13px', border:'1.5px solid #E8E4DF', borderRadius:9, fontSize:13.5, color:'#1C1A18', background:'#FAFAF9', fontFamily:"'DM Sans',sans-serif" },
   grid2:    { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 },
   divider:  { height:1, background:'#F0EDE8', margin:'16px 0' },
-  btnPrimary:{ display:'inline-flex', alignItems:'center', padding:'10px 20px', background:'#F07B2B', color:'#fff', border:'none', borderRadius:9, fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 3px 12px rgba(240,123,43,0.28)' },
-  btnGhost:  { display:'inline-flex', alignItems:'center', padding:'10px 16px', background:'transparent', color:'#7A736C', border:'1.5px solid #E8E4DF', borderRadius:9, fontSize:13.5, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" },
+  btnPrimary: { display:'inline-flex', alignItems:'center', padding:'10px 20px', background:'#F07B2B', color:'#fff', border:'none', borderRadius:9, fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:"'DM Sans',sans-serif", boxShadow:'0 3px 12px rgba(240,123,43,0.28)' },
+  btnGhost:   { display:'inline-flex', alignItems:'center', padding:'10px 16px', background:'transparent', color:'#7A736C', border:'1.5px solid #E8E4DF', borderRadius:9, fontSize:13.5, fontWeight:500, cursor:'pointer', fontFamily:"'DM Sans',sans-serif" },
 };
+
+const soStyle = { width:'100%', padding:'10px 13px', border:'1.5px solid #E8E4DF', borderRadius:9, fontSize:13.5, background:'#FAFAF9', fontFamily:"'DM Sans',sans-serif" };
 
 export default function PublicCaseForm() {
   const fileRef = useRef();
 
   const [form, setForm] = useState({
-    caseCode:'', title:'', subtitle:'', entity:'',
-    court:'', bench:'', lawyer:'', opposingCounsel:'',
-    status:'pending', stage:'filing',
+    caseCode:'', title:'', subtitle:'',
+    petitionerName:'', respondentName:'',
+    entity:'', court:'', bench:'',
+    lawyer:'', opposingCounsel:'',
+    status:'Pending', stage:'Filing',
     nextHearingDate:'', hearingType:'',
     reliefByPlaintiff:'', ourPosition:'', strategyRemarks:'',
   });
@@ -42,34 +47,33 @@ export default function PublicCaseForm() {
   const [error,    setError]    = useState('');
   const [step,     setStep]     = useState(1);
 
-  /* Fetch entities + lawyers on mount */
   useEffect(() => {
-    axios.get(`${API}/entities/public`)
-      .then((r) => setEntities(r.data.entities || []))
-      .catch(() => {});
-    axios.get(`${API}/lawyers/public`)
-      .then((r) => setLawyers(r.data.lawyers || []))
-      .catch(() => {});
+    axios.get(`${API}/entities/public`).then((r) => setEntities(r.data.entities || [])).catch(() => {});
+    axios.get(`${API}/lawyers/public`).then((r)  => setLawyers(r.data.lawyers   || [])).catch(() => {});
   }, []);
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set    = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setVal = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const fInp = (k, placeholder, type='text') => (
+    <input style={S.input} className="pub-input" type={type} placeholder={placeholder} value={form[k]} onChange={set(k)} />
+  );
 
   const handleFiles = (e) => {
     const sel = Array.from(e.target.files);
-    setFiles((prev) => {
-      const names = prev.map((f) => f.name);
-      return [...prev, ...sel.filter((f) => !names.includes(f.name))];
-    });
+    setFiles((prev) => { const names = prev.map(f=>f.name); return [...prev, ...sel.filter(f=>!names.includes(f.name))]; });
   };
   const removeFile = (name) => setFiles((f) => f.filter((x) => x.name !== name));
 
   const handleSubmit = async () => {
     if (!form.caseCode || !form.title || !form.court || !form.entity)
-      return setError('Case code, title, court and entity are required');
+      return setError('Case code, title, court, and entity are required');
     setLoading(true); setError('');
     try {
       const fd = new FormData();
-      Object.entries(form).forEach(([k,v]) => { if (v) fd.append(k, v); });
+      // Send lowercase status/stage to backend
+      const payload = { ...form, status: form.status.toLowerCase(), stage: form.stage.toLowerCase() };
+      Object.entries(payload).forEach(([k,v]) => { if (v) fd.append(k, v); });
       files.forEach((f) => fd.append('documents', f));
       const res = await axios.post(`${API}/cases/public`, fd, { headers:{ 'Content-Type':'multipart/form-data' } });
       setSuccess(res.data.case);
@@ -80,11 +84,11 @@ export default function PublicCaseForm() {
 
   const resetForm = () => {
     setSuccess(null);
-    setForm({ caseCode:'', title:'', subtitle:'', entity:'', court:'', bench:'', lawyer:'', opposingCounsel:'', status:'pending', stage:'filing', nextHearingDate:'', hearingType:'', reliefByPlaintiff:'', ourPosition:'', strategyRemarks:'' });
+    setForm({ caseCode:'', title:'', subtitle:'', petitionerName:'', respondentName:'', entity:'', court:'', bench:'', lawyer:'', opposingCounsel:'', status:'Pending', stage:'Filing', nextHearingDate:'', hearingType:'', reliefByPlaintiff:'', ourPosition:'', strategyRemarks:'' });
     setFiles([]); setStep(1); setError('');
   };
 
-  const selLawyer = lawyers.find((l) => l._id === form.lawyer);
+  const selLawyer = lawyers.find((l) => l._id === form.lawyer || l.name === form.lawyer);
 
   if (success) return (
     <div style={S.page}>
@@ -96,7 +100,7 @@ export default function PublicCaseForm() {
             <i className="ti ti-check" style={{ fontSize:32, color:'#16A34A' }} />
           </div>
           <h2 style={{ fontFamily:"'DM Serif Display',serif", fontSize:26, color:'#1C1A18', marginBottom:8 }}>Case Submitted!</h2>
-          <p style={{ fontSize:14, color:'#7A736C', marginBottom:24, lineHeight:1.6 }}>Your case has been registered in the Neoteric Legal system.</p>
+          <p style={{ fontSize:14, color:'#7A736C', marginBottom:24, lineHeight:1.6 }}>Your case has been successfully registered in the Neoteric Legal system.</p>
           <div style={{ background:'#FFF4EC', border:'1.5px solid #FDDBC0', borderRadius:10, padding:'16px 20px', marginBottom:28, textAlign:'left' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#9B9590', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Case Reference</div>
             <div style={{ fontSize:18, fontWeight:700, fontFamily:'monospace', color:'#F07B2B', letterSpacing:1 }}>{success.caseCode}</div>
@@ -112,34 +116,29 @@ export default function PublicCaseForm() {
   return (
     <div style={S.page}>
       <style>{GCSS}</style>
-
-      {/* Header */}
       <div style={S.header}>
         <BrandHeader />
         <h1 style={{ fontFamily:"'DM Serif Display',serif", fontSize:28, color:'#fff', fontWeight:400, marginBottom:8 }}>Submit a New Case</h1>
-        <p style={{ fontSize:14, color:'rgba(255,255,255,0.75)', lineHeight:1.6, maxWidth:500 }}>
-          Fill in the case details below. Your submission will be directly added to the Neoteric Legal Management System.
-        </p>
+        <p style={{ fontSize:14, color:'rgba(255,255,255,0.75)', lineHeight:1.6, maxWidth:500 }}>Fill in the case details. Your submission will be added to the Neoteric Legal Management System.</p>
         {/* Step pills */}
         <div style={{ display:'flex', alignItems:'center', gap:0, marginTop:24 }}>
           {['Case Details','Court & Lawyer','Documents'].map((label, i) => {
-            const num = i+1; const done = step > num; const active = step === num;
+            const num=i+1; const done=step>num; const active=step===num;
             return (
               <div key={label} style={{ display:'flex', alignItems:'center' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, border:'2px solid', background: done ? '#fff' : active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', borderColor: done||active ? '#fff' : 'rgba(255,255,255,0.3)', color: done ? '#F07B2B' : '#fff', transition:'all 0.2s' }}>
+                  <div style={{ width:30, height:30, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, border:'2px solid', background:done?'#fff':active?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.08)', borderColor:done||active?'#fff':'rgba(255,255,255,0.3)', color:done?'#F07B2B':'#fff', transition:'all 0.2s' }}>
                     {done ? <i className="ti ti-check" style={{ fontSize:13 }} /> : num}
                   </div>
-                  <span style={{ fontSize:12, color: active ? '#fff' : 'rgba(255,255,255,0.5)', fontWeight: active ? 600 : 400 }}>{label}</span>
+                  <span style={{ fontSize:12, color:active?'#fff':'rgba(255,255,255,0.5)', fontWeight:active?600:400 }}>{label}</span>
                 </div>
-                {i < 2 && <div style={{ width:28, height:1, background:'rgba(255,255,255,0.22)', margin:'0 8px' }} />}
+                {i<2 && <div style={{ width:28, height:1, background:'rgba(255,255,255,0.22)', margin:'0 8px' }} />}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Card */}
       <div style={S.card}>
         {error && (
           <div style={{ background:'#FEF2F2', border:'1.5px solid rgba(220,38,38,0.18)', borderRadius:10, padding:'12px 14px', fontSize:13, color:'#C0392B', marginBottom:18, display:'flex', alignItems:'center', gap:8 }}>
@@ -147,50 +146,53 @@ export default function PublicCaseForm() {
           </div>
         )}
 
-        {/* STEP 1 */}
+        {/* STEP 1 — Case Details */}
         {step === 1 && (
           <div>
-            <div style={S.secTitle}><i className="ti ti-file-description" style={{ marginRight:6 }} />Case Information</div>
+            <div style={S.secTitle}><i className="ti ti-file-description" />Case Information</div>
 
             <div style={S.grid2}>
               <div style={S.field}>
                 <label style={S.label}>Case Code *</label>
-                <input style={S.input} className="pub-input" type="text" placeholder="e.g. CAS-2026-0015" value={form.caseCode} onChange={set('caseCode')} />
+                {fInp('caseCode','e.g. CAS-2026-0015')}
                 <div style={S.hint}>Format: CAS-YEAR-NUMBER</div>
               </div>
               <div style={S.field}>
                 <label style={S.label}>Status</label>
-                <select style={S.input} className="pub-input" value={form.status} onChange={set('status')}>
-                  {STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-                </select>
+                <SelectOrOther options={STATUSES} value={form.status} onChange={setVal('status')} label="— Select status —" style={soStyle} className="pub-input" placeholder="Type custom status…" />
               </div>
             </div>
 
             <div style={S.field}>
               <label style={S.label}>Case Title / Matter *</label>
-              <input style={S.input} className="pub-input" type="text" placeholder="e.g. Party A v. Neoteric Properties — Lease dispute" value={form.title} onChange={set('title')} />
+              {fInp('title','e.g. Party A v. Neoteric Properties — Lease dispute')}
             </div>
             <div style={S.field}>
               <label style={S.label}>Brief Description</label>
-              <input style={S.input} className="pub-input" type="text" placeholder="Short description of the matter" value={form.subtitle} onChange={set('subtitle')} />
+              {fInp('subtitle','Short description of the matter')}
+            </div>
+
+            {/* Petitioner & Respondent */}
+            <div style={S.grid2}>
+              <div style={S.field}>
+                <label style={S.label}>Petitioner Name</label>
+                {fInp('petitionerName','e.g. Rahul Gupta / Company Ltd.')}
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Respondent Name</label>
+                {fInp('respondentName','e.g. Opposing Party Name')}
+              </div>
             </div>
 
             <div style={S.grid2}>
-              {/* ── Entity Dropdown — fetched from DB ── */}
               <div style={S.field}>
                 <label style={S.label}>Entity *</label>
-                <select style={S.input} className="pub-input" value={form.entity} onChange={set('entity')}>
-                  <option value="">— Select entity —</option>
-                  {entities.length === 0 && <option disabled>Loading entities…</option>}
-                  {entities.map((e) => <option key={e._id} value={e.name}>{e.name}</option>)}
-                </select>
+                <SelectOrOther options={entities.map(e=>e.name)} value={form.entity} onChange={setVal('entity')} label="— Select entity —" style={soStyle} className="pub-input" placeholder="Type entity name…" />
                 <div style={S.hint}>Which Neoteric entity is this case for?</div>
               </div>
               <div style={S.field}>
                 <label style={S.label}>Stage</label>
-                <select style={S.input} className="pub-input" value={form.stage} onChange={set('stage')}>
-                  {STAGES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-                </select>
+                <SelectOrOther options={STAGES} value={form.stage} onChange={setVal('stage')} label="— Select stage —" style={soStyle} className="pub-input" placeholder="Type stage name…" />
               </div>
             </div>
 
@@ -202,45 +204,50 @@ export default function PublicCaseForm() {
           </div>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2 — Court & Lawyer */}
         {step === 2 && (
           <div>
-            <div style={S.secTitle}><i className="ti ti-building-bank" style={{ marginRight:6 }} />Court Details</div>
+            <div style={S.secTitle}><i className="ti ti-building-bank" />Court Details</div>
 
             <div style={S.grid2}>
               <div style={S.field}>
                 <label style={S.label}>Court / Forum *</label>
-                <input style={S.input} className="pub-input" type="text" placeholder="e.g. District Court, Gwalior" value={form.court} onChange={set('court')} />
+                {fInp('court','e.g. District Court, Gwalior')}
               </div>
               <div style={S.field}>
                 <label style={S.label}>Bench / Court No.</label>
-                <input style={S.input} className="pub-input" type="text" placeholder="e.g. ADJ-III" value={form.bench} onChange={set('bench')} />
+                {fInp('bench','e.g. ADJ-III')}
               </div>
             </div>
 
             <div style={S.grid2}>
               <div style={S.field}>
                 <label style={S.label}>Next Hearing Date</label>
-                <input style={S.input} className="pub-input" type="date" value={form.nextHearingDate} onChange={set('nextHearingDate')} />
+                {fInp('nextHearingDate','','date')}
               </div>
               <div style={S.field}>
                 <label style={S.label}>Hearing Type</label>
-                <input style={S.input} className="pub-input" type="text" placeholder="e.g. Final arguments" value={form.hearingType} onChange={set('hearingType')} />
+                {fInp('hearingType','e.g. Final arguments')}
               </div>
             </div>
 
             <div style={S.divider} />
-            <div style={S.secTitle}><i className="ti ti-user-check" style={{ marginRight:6 }} />Assign Lawyer</div>
+            <div style={S.secTitle}><i className="ti ti-user-check" />Assign Lawyer</div>
 
             <div style={S.field}>
               <label style={S.label}>Select Lawyer</label>
-              <select style={S.input} className="pub-input" value={form.lawyer} onChange={set('lawyer')}>
-                <option value="">— Select a lawyer (optional) —</option>
-                {lawyers.length === 0 && <option disabled>Loading lawyers…</option>}
-                {lawyers.map((l) => (
-                  <option key={l._id} value={l._id}>{l.name} — {l.specialisation} · {l.court}</option>
-                ))}
-              </select>
+              <SelectOrOther
+                options={lawyers.map(l=>l.name)}
+                value={selLawyer?.name || (form.lawyer && !form.lawyer.match(/^[0-9a-f]{24}$/) ? form.lawyer : '')}
+                onChange={(v) => {
+                  const found = lawyers.find(l=>l.name===v);
+                  setForm(f=>({...f, lawyer: found ? found._id : v}));
+                }}
+                label="— Select a lawyer (optional) —"
+                style={soStyle}
+                className="pub-input"
+                placeholder="Type lawyer name…"
+              />
               <div style={S.hint}>Select the lawyer who will handle this case</div>
             </div>
 
@@ -253,10 +260,8 @@ export default function PublicCaseForm() {
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, color:'#1C1A18' }}>{selLawyer.name}</div>
                   <div style={{ fontSize:11, color:'#7A736C' }}>{selLawyer.specialisation} · {selLawyer.court}</div>
-                  {selLawyer.phone && <div style={{ fontSize:11, color:'#9B9590', marginTop:2 }}><i className="ti ti-phone" style={{ fontSize:11, marginRight:4 }} />{selLawyer.phone}</div>}
                 </div>
-                <button type="button" onClick={() => setForm((f) => ({ ...f, lawyer:'' }))}
-                  style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#C4BDB6', fontSize:16, padding:4, flexShrink:0 }}>
+                <button type="button" onClick={() => setForm(f=>({...f,lawyer:''}))} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#C4BDB6', fontSize:16, padding:4, flexShrink:0 }}>
                   <i className="ti ti-x" />
                 </button>
               </div>
@@ -264,29 +269,21 @@ export default function PublicCaseForm() {
 
             <div style={S.field}>
               <label style={S.label}>Opposing Counsel</label>
-              <input style={S.input} className="pub-input" type="text" placeholder="e.g. Adv. Name / Party in person" value={form.opposingCounsel} onChange={set('opposingCounsel')} />
+              {fInp('opposingCounsel','e.g. Adv. Name / Party in person')}
             </div>
 
             <div style={S.divider} />
-            <div style={S.secTitle}><i className="ti ti-bulb" style={{ marginRight:6 }} />Legal Strategy</div>
+            <div style={S.secTitle}><i className="ti ti-bulb" />Legal Strategy</div>
 
-            <div style={S.field}>
-              <label style={S.label}>Relief Sought / Plaintiff's Claim</label>
-              <input style={S.input} className="pub-input" type="text" placeholder="e.g. Recovery of ₹14.2L + interest" value={form.reliefByPlaintiff} onChange={set('reliefByPlaintiff')} />
-            </div>
-            <div style={S.field}>
-              <label style={S.label}>Our Position</label>
-              <input style={S.input} className="pub-input" type="text" placeholder="e.g. Dismiss the suit / counterclaim" value={form.ourPosition} onChange={set('ourPosition')} />
-            </div>
+            <div style={S.field}><label style={S.label}>Relief Sought / Plaintiff's Claim</label>{fInp('reliefByPlaintiff','e.g. Recovery of ₹14.2L + interest')}</div>
+            <div style={S.field}><label style={S.label}>Our Position</label>{fInp('ourPosition','e.g. Dismiss the suit / counterclaim')}</div>
             <div style={S.field}>
               <label style={S.label}>Strategy & Remarks</label>
-              <textarea style={{ ...S.input, resize:'vertical' }} className="pub-input" rows={4} placeholder="Key facts, evidence needed, action items, risks, important dates…" value={form.strategyRemarks} onChange={set('strategyRemarks')} />
+              <textarea style={{ ...S.input, resize:'vertical' }} className="pub-input" rows={4} placeholder="Key facts, evidence needed, action items, risks…" value={form.strategyRemarks} onChange={set('strategyRemarks')} />
             </div>
 
             <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
-              <button style={S.btnGhost} onClick={() => { setError(''); setStep(1); }}>
-                <i className="ti ti-arrow-left" style={{ marginRight:6 }} />Back
-              </button>
+              <button style={S.btnGhost} onClick={() => { setError(''); setStep(1); }}><i className="ti ti-arrow-left" style={{ marginRight:6 }} />Back</button>
               <button style={S.btnPrimary} onClick={() => { if (!form.court) return setError('Court is required'); setError(''); setStep(3); }}>
                 Next: Documents <i className="ti ti-arrow-right" style={{ marginLeft:6 }} />
               </button>
@@ -294,10 +291,10 @@ export default function PublicCaseForm() {
           </div>
         )}
 
-        {/* STEP 3 */}
+        {/* STEP 3 — Documents */}
         {step === 3 && (
           <div>
-            <div style={S.secTitle}><i className="ti ti-files" style={{ marginRight:6 }} />Documents & Attachments</div>
+            <div style={S.secTitle}><i className="ti ti-files" />Documents & Attachments</div>
             <p style={{ fontSize:13, color:'#7A736C', marginBottom:16, lineHeight:1.6 }}>Upload plaint, legal notices, annexures, site photos, contracts. Multiple files allowed.</p>
 
             <div className="pub-file-zone" onClick={() => fileRef.current.click()}>
@@ -309,7 +306,7 @@ export default function PublicCaseForm() {
 
             {files.length > 0 && (
               <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#9B9590', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>{files.length} file{files.length > 1 ? 's' : ''} selected</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#9B9590', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>{files.length} file{files.length>1?'s':''} selected</div>
                 {files.map((f) => (
                   <div key={f.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#FFFBF5', border:'1.5px solid #FDDBC0', borderRadius:9, marginBottom:6 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
@@ -330,12 +327,14 @@ export default function PublicCaseForm() {
               <div style={{ fontSize:11, fontWeight:700, color:'#9B9590', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Submission Summary</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, fontSize:12 }}>
                 {[
-                  { label:'Case Code', val: form.caseCode },
-                  { label:'Status',    val: form.status },
-                  { label:'Entity',    val: form.entity?.length > 22 ? form.entity.slice(0,22)+'…' : form.entity },
-                  { label:'Court',     val: form.court?.split(',')[0] },
-                  { label:'Lawyer',    val: selLawyer?.name || 'Not assigned' },
-                  { label:'Documents', val: `${files.length} file${files.length !== 1 ? 's' : ''}` },
+                  { label:'Case Code',   val: form.caseCode },
+                  { label:'Status',      val: form.status },
+                  { label:'Petitioner',  val: form.petitionerName || '—' },
+                  { label:'Respondent',  val: form.respondentName || '—' },
+                  { label:'Entity',      val: form.entity?.length>22 ? form.entity.slice(0,22)+'…' : form.entity },
+                  { label:'Court',       val: form.court?.split(',')[0] },
+                  { label:'Lawyer',      val: selLawyer?.name || form.lawyer || 'Not assigned' },
+                  { label:'Documents',   val: `${files.length} file${files.length!==1?'s':''}` },
                 ].map(({ label, val }) => (
                   <div key={label} style={{ display:'flex', gap:6 }}>
                     <span style={{ color:'#9B9590', minWidth:72, flexShrink:0 }}>{label}:</span>
@@ -346,9 +345,7 @@ export default function PublicCaseForm() {
             </div>
 
             <div style={{ display:'flex', justifyContent:'space-between' }}>
-              <button style={S.btnGhost} onClick={() => { setError(''); setStep(2); }}>
-                <i className="ti ti-arrow-left" style={{ marginRight:6 }} />Back
-              </button>
+              <button style={S.btnGhost} onClick={() => { setError(''); setStep(2); }}><i className="ti ti-arrow-left" style={{ marginRight:6 }} />Back</button>
               <button style={{ ...S.btnPrimary, minWidth:160, justifyContent:'center' }} onClick={handleSubmit} disabled={loading}>
                 {loading
                   ? <><div style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.35)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', marginRight:8, display:'inline-block' }} />Submitting…</>
