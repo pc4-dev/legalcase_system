@@ -1,100 +1,63 @@
 const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const path = require('path');
+const cors    = require('cors');
+const morgan  = require('morgan');
+const path    = require('path');
 require('dotenv').config();
 
-const connectDB = require('./config/db');
-
-const authRoutes = require('./routes/authRoutes');
-const caseRoutes = require('./routes/caseRoutes');
-const lawyerRoutes = require('./routes/lawyerRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
+const connectDB           = require('./config/db');
+const authRoutes          = require('./routes/authRoutes');
+const caseRoutes          = require('./routes/caseRoutes');
+const lawyerRoutes        = require('./routes/lawyerRoutes');
+const notificationRoutes  = require('./routes/notificationRoutes');
+const entityRoutes        = require('./routes/entityRoutes');
 
 const app = express();
 
-// Connect MongoDB
 connectDB();
 
-// ================= MIDDLEWARE =================
+/* ── CORS ── */
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      process.env.CLIENT_URL,
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) callback(null, true);
+    else callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
-// CORS
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        process.env.CLIENT_URL,
-      ].filter(Boolean);
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  })
-);
-
-// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 
-// Logger
-if (process.env.NODE_ENV !== 'production') {
-  app.use(morgan('dev'));
-}
-
-// Static Upload Folder
+/* Static uploads */
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ================= API ROUTES =================
-
-app.use('/api/auth', authRoutes);
-app.use('/api/cases', caseRoutes);
-app.use('/api/lawyers', lawyerRoutes);
+/* ── API Routes ── */
+app.use('/api/auth',          authRoutes);
+app.use('/api/cases',         caseRoutes);
+app.use('/api/lawyers',       lawyerRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/entities',      entityRoutes);
 
-// ================= HEALTH CHECK =================
+/* Health check */
+app.get('/api/health', (_req, res) =>
+  res.json({ status: 'OK', message: 'Neoteric Legal API running', timestamp: new Date() })
+);
 
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Neoteric Legal API Running Successfully 🚀',
-    timestamp: new Date(),
-  });
-});
-
-// ================= ROOT ROUTE =================
-
-app.get('/', (req, res) => {
-  res.send('Neoteric Legal Backend API is Live 🚀');
-});
-
-// ================= GLOBAL ERROR HANDLER =================
-
-app.use((err, req, res, next) => {
+/* Global error handler */
+app.use((err, _req, res, _next) => {
   console.error(err.stack);
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
   });
 });
 
-// ================= SERVER =================
-
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on PORT ${PORT}`);
-});
-
-// Self ping - every 14 minutes
-setInterval(() => {
-  fetch('https://legalcase-system-1.onrender.com/api/health')
-    .then(() => console.log('Self ping - staying awake'))
-    .catch(() => {});
-}, 14 * 60 * 1000);
+app.listen(PORT, () =>
+  console.log(`✅  Server running on http://localhost:${PORT} [${process.env.NODE_ENV}]`)
+);

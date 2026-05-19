@@ -4,16 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../Common/Layout';
 import { notificationService } from '../../services/notificationService';
 
-const ENTITIES = [
-  { name: 'Neoteric Properties', icon: 'ti-building' },
-  { name: 'Navayan Realty',      icon: 'ti-building-skyscraper' },
-  { name: 'Heaven Heights',      icon: 'ti-building-community' },
-];
-
 export default function Sidebar() {
-  const { user, logout }             = useAuth();
+  const { user, logout }              = useAuth();
   const { sidebarOpen, closeSidebar } = useSidebar();
-  const navigate                     = useNavigate();
+  const navigate                      = useNavigate();
   const [unread, setUnread]           = useState(0);
 
   useEffect(() => {
@@ -24,93 +18,48 @@ export default function Sidebar() {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
+  const navItem = (to, icon, label, badge) => (
+    <NavLink to={to} onClick={closeSidebar}
+      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+      <i className={`ti ${icon}`} />
+      {label}
+      {badge > 0 && <span className={`nav-badge${label === 'Notifications' ? ' red' : ''}`}>{badge}</span>}
+    </NavLink>
+  );
+
   return (
     <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
 
-      {/* ── Brand / Logo ── */}
+      {/* Brand */}
       <div className="sidebar-logo">
-        <div className="brand-icon">
-          <i className="ti ti-gavel" />
-        </div>
+        <div className="brand-icon"><i className="ti ti-gavel" /></div>
         <div className="brand-text">
           <div className="brand-name">Neoteric Group</div>
           <div className="brand-sub">Legal Portal</div>
         </div>
       </div>
 
-      {/* ── Navigation ── */}
+      {/* Nav */}
       <nav className="sidebar-nav">
-
         <div className="nav-section-label">Overview</div>
-
-        <NavLink
-          to="/dashboard"
-          onClick={closeSidebar}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <i className="ti ti-layout-dashboard" />
-          Dashboard
-        </NavLink>
-
-        <NavLink
-          to="/cases"
-          onClick={closeSidebar}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <i className="ti ti-briefcase" />
-          All Cases
-          <span className="nav-badge">14</span>
-        </NavLink>
+        {navItem('/dashboard', 'ti-layout-dashboard', 'Dashboard')}
+        {navItem('/cases',     'ti-briefcase',        'All Cases', 0)}
+        {navItem('/calendar',  'ti-calendar-event',   'Hearing Calendar')}
 
         <div className="nav-section-label">Manage</div>
-
-        <NavLink
-          to="/lawyers"
-          onClick={closeSidebar}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <i className="ti ti-user-check" />
-          Lawyers
-        </NavLink>
-
-        <NavLink
-          to="/vault"
-          onClick={closeSidebar}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <i className="ti ti-folder" />
-          Document Vault
-        </NavLink>
+        {navItem('/lawyers',   'ti-user-check', 'Lawyers')}
+        {navItem('/entities',  'ti-building',   'Entities')}
+        {navItem('/vault',     'ti-folder',     'Document Vault')}
 
         <div className="nav-section-label">Alerts</div>
-
-        <NavLink
-          to="/notifications"
-          onClick={closeSidebar}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <i className="ti ti-bell" />
-          Notifications
-          {unread > 0 && <span className="nav-badge red">{unread}</span>}
-        </NavLink>
-
-        <div className="nav-section-label">Entities</div>
-
-        {ENTITIES.map((e) => (
-          <div key={e.name} className="nav-item entity">
-            <i className={`ti ${e.icon}`} />
-            {e.name}
-          </div>
-        ))}
+        {navItem('/notifications', 'ti-bell', 'Notifications', unread)}
       </nav>
 
-      {/* ── Footer / User ── */}
+      {/* Footer */}
       <div className="sidebar-footer">
-        <div className="user-avatar">
-          {user?.initials || 'RG'}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="user-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div className="user-avatar">{user?.initials || 'RG'}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div className="user-name" style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {user?.name || 'Rahul Gupta'}
           </div>
           <div className="user-role">
@@ -121,7 +70,6 @@ export default function Sidebar() {
           <i className="ti ti-logout" />
         </button>
       </div>
-
     </aside>
   );
 }
