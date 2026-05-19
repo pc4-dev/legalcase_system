@@ -44,10 +44,9 @@ const caseSchema = new mongoose.Schema(
 
     entity: {
       type: String,
-      enum: ['Neoteric Properties Pvt. Ltd.', 'Navayan Realty', 'Heaven Heights Pvt. Ltd.', 'Neoteric Group'],
-      required: true,
+      required: [true, 'Entity is required'],
+      trim: true,
     },
-
     court: { type: String, required: true },
     bench: { type: String },
 
