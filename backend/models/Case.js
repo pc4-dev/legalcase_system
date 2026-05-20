@@ -46,7 +46,8 @@ const caseSchema = new mongoose.Schema(
 
     court:           { type: String, required: true },
     bench:           { type: String },
-    lawyer:          { type: mongoose.Schema.Types.ObjectId, ref: 'Lawyer' },
+    lawyer:      { type: mongoose.Schema.Types.ObjectId, ref: 'Lawyer' },
+    lawyerName:  { type: String, trim: true },
     opposingCounsel: { type: String },
 
     status: {

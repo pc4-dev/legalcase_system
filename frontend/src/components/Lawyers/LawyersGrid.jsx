@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LawyerCardSkeleton } from '../Common/Skeleton';
 import { lawyerService } from '../../services/lawyerService';
 
 const COLOR_VARIANTS = ['orange','blue','green','purple','red'];
@@ -151,23 +152,41 @@ export default function LawyersGrid() {
     lawyerService.getAll().then((d) => setLawyers(d.lawyers || [])).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:300, flexDirection:'column', gap:14 }}>
-      <div className="spinner-orange" />
-      <span style={{ fontSize:13, color:'var(--ink-50)' }}>Loading lawyers…</span>
-    </div>
-  );
+  // skeleton handled below
 
-  const handleAdded   = (l) => { setLawyers((p) => [l, ...p]); setShowAdd(false); };
+
+  const [newIds, setNewIds] = useState(new Set());
+
+  const handleAdded = (l) => {
+    setLawyers((p) => [l, ...p]);
+    setShowAdd(false);
+    setNewIds((prev) => new Set([...prev, l._id]));
+    setTimeout(() => setNewIds((prev) => { const n = new Set(prev); n.delete(l._id); return n; }), 2500);
+  };
   const handleSaved   = (l) => { setLawyers((p) => p.map((x) => x._id === l._id ? l : x)); setEditL(null); };
   const handleDeleted = (id) => { setLawyers((p) => p.filter((x) => x._id !== id)); setDeleteL(null); };
 
+  if (loading) return (
+    <>
+      <style>{"@keyframes skShimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}.sk-bone{background:linear-gradient(90deg,#F0EDE8 25%,#F7F5F2 50%,#F0EDE8 75%);background-size:600px 100%;animation:skShimmer 1.4s infinite linear;border-radius:6px;}"}</style>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20 }}>
+        <div className="sk-bone" style={{ width:130, height:13 }} />
+        <div className="sk-bone" style={{ width:110, height:36, borderRadius:8 }} />
+      </div>
+      <div className="lawyer-grid">
+        {Array.from({ length: 6 }).map((_,i) => <LawyerCardSkeleton key={i} />)}
+      </div>
+    </>
+  );
+
   return (
     <>
+      <style>{"@keyframes slideInL{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:none}}.lawyer-new{animation:slideInL 0.3s ease;outline:2px solid #F07B2B !important;outline-offset:2px;}"}</style>
       {/* Toolbar */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:10 }}>
-        <div>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ fontSize:13, color:'var(--ink-50)', fontWeight:500 }}>{lawyers.length} active lawyer{lawyers.length!==1?'s':''}</span>
+          {newIds.size > 0 && <span style={{ fontSize:10, background:'#FFF4EC', color:'#F07B2B', padding:'2px 8px', borderRadius:20, fontWeight:600, border:'1px solid #FDDBC0' }}>+{newIds.size} new</span>}
         </div>
         <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
           <i className="ti ti-plus" /> Add lawyer
@@ -182,7 +201,7 @@ export default function LawyersGrid() {
           return (
             <div
               key={l._id}
-              className="lawyer-card"
+              className={`lawyer-card${newIds.has(l._id) ? " lawyer-new" : ""}`}
               onMouseEnter={() => setHoverId(l._id)}
               onMouseLeave={() => setHoverId(null)}
             >

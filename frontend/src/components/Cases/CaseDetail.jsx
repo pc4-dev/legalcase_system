@@ -169,10 +169,10 @@ export default function CaseDetail({ caseId }) {
             <i className="ti ti-building-bank" style={{ fontSize:13 }} />
             {caseDoc.court}{caseDoc.bench ? ` — ${caseDoc.bench}` : ''}
           </span>
-          {caseDoc.lawyer && (
+          {(caseDoc.lawyer || caseDoc.lawyerName) && (
             <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11.5, padding:'5px 11px', borderRadius:20, background:'rgba(255,255,255,0.18)', color:'rgba(255,255,255,0.92)', border:'1px solid rgba(255,255,255,0.15)' }}>
               <i className="ti ti-user-check" style={{ fontSize:13 }} />
-              {caseDoc.lawyer.name}
+              {caseDoc.lawyer?.name || caseDoc.lawyerName}
             </span>
           )}
           {caseDoc.nextHearingDate && (
@@ -233,7 +233,7 @@ export default function CaseDetail({ caseId }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
               <InfoBlock label="Case Code" value={caseDoc.caseCode} />
               <InfoBlock label="Court & Bench" value={`${caseDoc.court}${caseDoc.bench ? ` — ${caseDoc.bench}` : ''}`} />
-              <InfoBlock label="Assigned Lawyer" value={caseDoc.lawyer?.name || '—'} />
+              <InfoBlock label="Assigned Lawyer" value={caseDoc.lawyer?.name || caseDoc.lawyerName || '—'} />
               <InfoBlock label="Lawyer Mobile" value={caseDoc.lawyer?.phone || '—'} />
               <InfoBlock label="Opposing Counsel" value={caseDoc.opposingCounsel || '—'} />
               <InfoBlock label="Entity" value={caseDoc.entity} />

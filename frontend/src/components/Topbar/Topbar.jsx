@@ -24,6 +24,17 @@ export default function Topbar() {
   const basePath = '/' + location.pathname.split('/')[1];
   const title    = PAGE_TITLES[basePath] || 'Legal Management';
 
+  const handleCaseCreated = (caseDoc) => {
+    setModalOpen(false);
+    // If CasesPage is mounted, call its handler for instant add
+    if (typeof window.__onCaseCreated === 'function') {
+      window.__onCaseCreated(caseDoc);
+    } else {
+      // Not on cases page — navigate there with the new case
+      navigate(`/cases/${caseDoc._id}`);
+    }
+  };
+
   return (
     <>
       <header className="topbar">
@@ -59,7 +70,12 @@ export default function Topbar() {
           </div>
         </div>
       </header>
-      <NewCaseModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <NewCaseModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={handleCaseCreated}
+      />
       <style>{`@media(max-width:480px){.btn-new-text{display:none;}.btn.btn-primary{padding:8px 10px;}}`}</style>
     </>
   );

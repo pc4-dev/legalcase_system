@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { entityService } from '../services/entityService';
+import { EntityCardSkeleton } from '../components/Common/Skeleton';
 
 const COLOR_MAP = {
   orange: { bg: '#FFF4EC', text: '#C94B10', dot: '#F07B2B' },

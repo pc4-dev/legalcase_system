@@ -9,21 +9,22 @@ const {
 const { protect, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
-/* ── Stats (must come before /:id) ── */
+/* Stats */
 router.get('/stats', protect, getCaseStats);
 
 /* ═══════════════════════════════════════
-   PUBLIC ROUTE — no auth required
-   POST /api/cases/public
+   PUBLIC ROUTE — POST /api/cases/public
 ═══════════════════════════════════════ */
 router.post('/public', upload.array('documents', 10), async (req, res) => {
   try {
-    const Case = require('../models/Case');
+    const Case     = require('../models/Case');
+    const mongoose = require('mongoose');
 
     const {
       caseCode, title, subtitle, entity, court, bench,
-      opposingCounsel, status, stage,
+      lawyer, opposingCounsel, status, stage,
       nextHearingDate, hearingType, filedDate,
+      petitionerName, respondentName,
       reliefByPlaintiff, ourPosition, strategyRemarks,
     } = req.body;
 
@@ -34,23 +35,26 @@ router.post('/public', upload.array('documents', 10), async (req, res) => {
       });
     }
 
-    /* Build documents array from uploaded files */
+    /* Handle lawyer — valid ObjectId OR custom name string */
+    const lawyerObjId  = mongoose.Types.ObjectId.isValid(lawyer) ? lawyer : undefined;
+    const lawyerCustom = (!mongoose.Types.ObjectId.isValid(lawyer) && lawyer) ? lawyer : undefined;
+
+    /* Build documents */
     const documents = (req.files || []).map((file) => ({
-      name:         file.originalname,
-      originalName: file.originalname,
-      fileType:     'other',
-      filePath:     `/uploads/${file.filename}`,
-      fileSize:     `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      mimeType:     file.mimetype,
-      status:       'uploaded',
+      name: file.originalname, originalName: file.originalname,
+      fileType: 'other', filePath: `/uploads/${file.filename}`,
+      fileSize: `${(file.size/(1024*1024)).toFixed(2)} MB`,
+      mimeType: file.mimetype, status: 'uploaded',
     }));
 
     const caseDoc = await Case.create({
       caseCode:  caseCode.toUpperCase().trim(),
       title, subtitle, entity, court, bench,
-      opposingCounsel,
-      status:    status   || 'pending',
-      stage:     stage    || 'filing',
+      lawyer:         lawyerObjId,
+      lawyerName:     lawyerCustom,
+      opposingCounsel, petitionerName, respondentName,
+      status:    (status || 'pending').toLowerCase(),
+      stage:     (stage  || 'filing').toLowerCase(),
       nextHearingDate: nextHearingDate || undefined,
       hearingType,
       filedDate: filedDate || new Date(),
@@ -65,7 +69,7 @@ router.post('/public', upload.array('documents', 10), async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000)
-      return res.status(400).json({ success: false, message: 'Case code already exists — please use a unique code' });
+      return res.status(400).json({ success: false, message: 'Case code already exists' });
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -83,11 +87,11 @@ router.route('/:id')
   .delete(protect, authorize('admin'), deleteCase);
 
 /* Adjournments */
-router.post('/:id/adjournments',          protect, authorize('admin', 'manager'), addAdjournment);
-router.delete('/:id/adjournments/:adjId', protect, authorize('admin', 'manager'), deleteAdjournment);
+router.post('/:id/adjournments',          protect, authorize('admin','manager'), addAdjournment);
+router.delete('/:id/adjournments/:adjId', protect, authorize('admin','manager'), deleteAdjournment);
 
 /* Documents */
-router.post('/:id/documents',         protect, upload.single('file'), uploadDocument);
-router.delete('/:id/documents/:docId',protect, authorize('admin', 'manager'), deleteDocument);
+router.post('/:id/documents',          protect, upload.single('file'), uploadDocument);
+router.delete('/:id/documents/:docId', protect, authorize('admin','manager'), deleteDocument);
 
 module.exports = router;
